@@ -1,0 +1,83 @@
+pipeline {
+  agent {
+    kubernetes {
+      defaultContainer 'maven'
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          labels:
+            name: staline
+        spec:
+          containers:
+          - name: maven
+            image: maven:alpine
+            command:
+            - cat
+            tty: true
+        '''
+        retries 2
+    }
+  }
+   stages{
+     stage('Pulling Java Project From GitHub') {
+       steps {
+           container('jnlp'){
+               git branch: 'main', url: 'https://github.com/MenesK2M/Java_project.git'
+           }
+       }
+     }
+     stage('Maven Clean') {
+       steps {
+           container('maven'){
+               sh 'mvn clean'
+           }
+       }
+     }
+     stage('Maven Install') {
+       steps {
+           container('maven'){
+               sh 'mvn -B install'
+           }
+       }
+     }
+       stage('Maven Test') {
+       steps {
+           container('maven'){
+               sh 'mvn test'
+           }
+       }
+     }
+     stage('Maven Package') {
+       steps {
+           container('maven'){
+               sh 'mvn package'
+           }
+       }
+     }
+     stage('upload_to_Artifactory') {
+       steps {
+           rtUpload (
+               serverId: 'jfrog',
+               spec: '''{
+                      "files": [
+                        {
+                          "pattern": "webapp/target/*.war",
+                          "target": "libs-snapshot-local"
+                        }
+                     ]
+                }''',
+
+                // Optional - Associate the uploaded files with the following custom build name and build number,
+                // as build artifacts.
+                // If not set, the files will be associated with the default build name and build number (i.e the 
+                // the Jenkins job name and number).
+                buildName: 'javaProject',
+                buildNumber: '1',
+                // Optional - Only if this build is associated with a project in Artifactory, set the project key as follows.
+                project: 'my-project-key'
+           )
+       }
+     }
+   }
+}
