@@ -4,7 +4,7 @@ metadata:
   name: jenkins
   namespace: devops-tools
 spec:
-  replicas: 6
+  replicas: 7
   selector:
     matchLabels:
       app: jenkins-server
